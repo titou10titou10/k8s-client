@@ -1,0 +1,44 @@
+
+// Deploiement de l'application dans k8s
+
+buildscript {
+   repositories { 
+      flatDir {dirs 'D:/aae/build/git/k8s-client/k8s-client/build/libs'}
+      maven {url "https://sldops0196.saq.qc.ca:10403/repository/saq-global/" }
+    }
+    dependencies {
+        classpath name: 'k8s-client'
+        classpath "io.fabric8:kubernetes-client:3.1.8"
+    }
+}
+
+apply plugin: 'org.titou10.k8s-deployer'
+
+def basePath = rootProject.file("../../../../../../CommandesAgences/outils/k8s/fnc").absolutePath
+def ymlPath = basePath + "/interne/yml/"
+
+deployer {
+
+   k8sServerURL = "https://sldops0196.saq.qc.ca:10421"
+   auth { token = file(basePath + "/k8s_token.txt") }
+   ssl { trustAll = true }
+   
+   deploy {
+      action {
+         yaml = file(ymlPath + "ca_interne_service.yml")
+         strategy = "REPLACE"
+      }
+      action {
+         yaml = file(ymlPath + "ca_interne_configMap_wlp.yml")
+         strategy = "REPLACE"
+      }
+      action {
+         yaml = file(ymlPath + "ca_interne_secrets.yml")
+         strategy = "REPLACE"
+      }
+      action {
+         yaml = file(ymlPath + "ca_interne_deployment.yml")
+         strategy = "REPLACE"
+      }
+   }
+}

@@ -1,0 +1,34 @@
+plugins { id 'java-gradle-plugin' }
+
+repositories { maven { url "https://sldops0196.saq.qc.ca:10403/repository/saq-global/" }}
+dependencies { 
+     compile "io.fabric8:kubernetes-client:3.1.8"
+     compile 'org.slf4j:slf4j-api:1.7.25'
+     compile 'ch.qos.logback:logback-classic:1.2.3'
+     compile 'ch.qos.logback:logback-core:1.2.3'
+}
+
+def version = "0.9.0"
+
+/*
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'Gradle Kubernetes Deploy plugin',
+                   'Implementation-Version': version,
+                   'Built-By': System.getProperty('user.name'),
+                   'Built-Date': new Date(),
+                   'Built-JDK': System.getProperty('java.version'),
+                   'Built-Gradle': gradle.gradleVersion
+    }
+}
+*/
+
+gradlePlugin {
+    plugins {
+        simplePlugin {
+            id = 'org.titou10.k8s-deployer'
+            implementationClass = 'org.titou10.k8sclient.K8SClientPlugin'
+        }
+    }
+}
+ 
