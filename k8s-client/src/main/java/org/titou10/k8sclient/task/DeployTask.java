@@ -1,9 +1,14 @@
 package org.titou10.k8sclient.task;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -48,6 +53,10 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 
 public class DeployTask extends DefaultTask {
 
+   private static final String       YAML_SEPARATOR = "---";
+   private static final String       YAML_EOL       = "\n";
+   private static final String       YAML_ENCODING  = "UTF-8";
+
    private Property<String>          k8sServerURL;
    private Property<SSLExtension>    ssl;
    private Property<AuthExtension>   auth;
@@ -57,12 +66,12 @@ public class DeployTask extends DefaultTask {
    public void deploy() {
 
       System.out.println(" ");
-      System.out.println("= Data =========================");
+      System.out.println("= Debug==============================");
       System.out.println("k8sServerURL: " + k8sServerURL);
       System.out.println("ssl         : " + ssl);
       System.out.println("auth        : " + auth);
       System.out.println("deploy      : " + deploy);
-      System.out.println("================================");
+      System.out.println("=====================================");
       System.out.println(" ");
 
       // Bypass certificate check + Host name validation
@@ -84,124 +93,155 @@ public class DeployTask extends DefaultTask {
             File yamlFile = action.getYaml();
             String yamlFileName = yamlFile.getCanonicalPath();
 
-            // Parse Yaml
             if (!yamlFile.exists()) {
                throw new TaskExecutionException(this, new GradleException("File '" + yamlFileName + "' not found"));
             }
 
+            // Parse Yaml
             System.out.println("Parsing file '" + yamlFileName + "'");
-            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-            HasMetadata metaData = mapper.readValue(yamlFile, HasMetadata.class);
 
-            String kind = metaData.getKind();
-            ObjectMeta om = metaData.getMetadata();
-            String nameSpaceName = om.getNamespace();
-            String name = om.getName();
-            System.out.println("Processing component '" + name + "' of kind '" + kind + "' in namespace '" + nameSpaceName + "' ("
-                               + strategy + ")");
-
-            switch (kind) {
-               case "Namespace":
-                  switch (strategy) {
-                     case CREATE:
-                        System.out.println("Namespace created: " + client.namespaces().load(yamlFileName).create());
-                        break;
-                     case DELETE:
-                        System.out.println("Namespace deleted:" + client.namespaces().withName(name).delete());
-                        break;
-                     case REPLACE:
-                        Namespace namespace = client.namespaces().withName(name).get();
-                        if (namespace != null) {
-                           client.namespaces().withName(name).delete();
-                        }
-                        System.out.println("Namespace replaced: " + client.namespaces().load(yamlFileName).create());
-                        break;
-                  }
-
-                  break;
-
-               case "Service":
-                  switch (strategy) {
-                     case CREATE:
-                        System.out.println("Service created: " + client.services().load(yamlFileName).create());
-                        break;
-                     case DELETE:
-                        System.out.println("Service deleted:"
-                                           + client.services().inNamespace(nameSpaceName).withName(name).delete());
-                        break;
-                     case REPLACE:
-                        Service service = client.services().inNamespace(nameSpaceName).withName(name).get();
-                        if (service != null) {
-                           client.services().inNamespace(nameSpaceName).withName(name).delete();
-                        }
-                        System.out.println("Service replaced: " + client.services().load(yamlFileName).create());
-                        break;
-                  }
-                  break;
-
-               case "Secret":
-                  switch (strategy) {
-                     case CREATE:
-                        System.out.println("Secret created: " + client.secrets().load(yamlFileName).create());
-                        break;
-                     case DELETE:
-                        System.out
-                                 .println("Secret deleted: " + client.secrets().inNamespace(nameSpaceName).withName(name).delete());
-                        break;
-                     case REPLACE:
-                        Secret secret = client.secrets().inNamespace(nameSpaceName).withName(name).get();
-                        if (secret != null) {
-                           client.secrets().inNamespace(nameSpaceName).withName(name).delete();
-                        }
-                        System.out.println("Secret replaced: " + client.secrets().load(yamlFileName).create());
-                        break;
-                  }
-                  break;
-
-               case "ConfigMap":
-                  switch (strategy) {
-                     case CREATE:
-                        System.out.println("ConfigMap created: " + client.configMaps().load(yamlFileName).create());
-                        break;
-                     case DELETE:
-                        System.out.println("ConfigMap deleted: "
-                                           + client.configMaps().inNamespace(nameSpaceName).withName(name).delete());
-                        break;
-                     case REPLACE:
-                        ConfigMap configMap = client.configMaps().inNamespace(nameSpaceName).withName(name).get();
-                        if (configMap != null) {
-                           client.configMaps().inNamespace(nameSpaceName).withName(name).delete();
-                        }
-                        System.out.println("ConfigMap replaced: " + client.configMaps().load(yamlFileName).create());
-                        break;
-                  }
-                  break;
-
-               case "Deployment":
-                  switch (strategy) {
-                     case CREATE:
-                        System.out.println("Deployment created: " + client.extensions().deployments().load(yamlFileName).create());
-                        break;
-                     case DELETE:
-                        System.out.println("Deployment deleted: "
-                                           + client.extensions().deployments().inNamespace(nameSpaceName).withName(name).delete());
-                        break;
-                     case REPLACE:
-                        Deployment deployment = client.extensions().deployments().inNamespace(nameSpaceName).withName(name).get();
-                        if (deployment != null) {
-                           client.extensions().deployments().inNamespace(nameSpaceName).withName(name).delete();
-                        }
-                        System.out.println("Deployment replaced: " + client.extensions().deployments().load(yamlFileName).create());
-                        break;
-                  }
-                  break;
-
-               default:
-                  throw new TaskExecutionException(this,
-                                                   new GradleException("Component of kind '" + kind
-                                                                       + "' not (yet) supported by the plugin"));
+            // Split file on "---"
+            List<StringBuffer> splittedFiles = new ArrayList<>(); // List of files
+            StringBuffer currentFile = new StringBuffer(1024);
+            List<String> yamlFileAsStrings = Files.readAllLines(yamlFile.toPath());
+            for (String line : yamlFileAsStrings) {
+               if (!line.startsWith(YAML_SEPARATOR)) {
+                  currentFile.append(line).append(YAML_EOL);
+                  continue;
+               }
+               splittedFiles.add(currentFile);
+               currentFile = new StringBuffer(256);
             }
-            System.out.println(" ");
+            splittedFiles.add(currentFile);
+            System.out.println("'" + splittedFiles.size() + "' components found in input file");
+
+            // Iterate on split files
+            for (StringBuffer fileAsString : splittedFiles) {
+               try (InputStream is = new ByteArrayInputStream(fileAsString.toString().getBytes(YAML_ENCODING));) {
+
+                  ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+                  HasMetadata metaData = mapper.readValue(is, HasMetadata.class);
+
+                  String kind = metaData.getKind();
+                  ObjectMeta om = metaData.getMetadata();
+                  String nameSpaceName = om.getNamespace();
+                  String name = om.getName();
+                  System.out.println("Processing component '" + name + "' of kind '" + kind + "' in namespace '" + nameSpaceName
+                                     + "' (" + strategy + ")");
+
+                  is.reset(); // Reposition InputStream at the beginning
+
+                  switch (kind) {
+                     case "Namespace":
+                        switch (strategy) {
+                           case CREATE:
+                              System.out.println("Namespace created: " + client.namespaces().load(is).create());
+                              break;
+                           case DELETE:
+                              System.out.println("Namespace deleted:" + client.namespaces().withName(name).delete());
+                              break;
+                           case REPLACE:
+                              Namespace namespace = client.namespaces().withName(name).get();
+                              if (namespace != null) {
+                                 client.namespaces().withName(name).delete();
+                              }
+                              System.out.println("Namespace replaced: " + client.namespaces().load(is).create());
+                              break;
+                        }
+
+                        break;
+
+                     case "Service":
+                        switch (strategy) {
+                           case CREATE:
+                              System.out.println("Service created: " + client.services().load(is).create());
+                              break;
+                           case DELETE:
+                              System.out.println("Service deleted:"
+                                                 + client.services().inNamespace(nameSpaceName).withName(name).delete());
+                              break;
+                           case REPLACE:
+                              Service service = client.services().inNamespace(nameSpaceName).withName(name).get();
+                              if (service != null) {
+                                 client.services().inNamespace(nameSpaceName).withName(name).delete();
+                              }
+                              System.out.println("Service replaced: " + client.services().load(is).create());
+                              break;
+                        }
+                        break;
+
+                     case "Secret":
+                        switch (strategy) {
+                           case CREATE:
+                              System.out.println("Secret created: " + client.secrets().load(is).create());
+                              break;
+                           case DELETE:
+                              System.out.println("Secret deleted: "
+                                                 + client.secrets().inNamespace(nameSpaceName).withName(name).delete());
+                              break;
+                           case REPLACE:
+                              Secret secret = client.secrets().inNamespace(nameSpaceName).withName(name).get();
+                              if (secret != null) {
+                                 client.secrets().inNamespace(nameSpaceName).withName(name).delete();
+                              }
+                              System.out.println("Secret replaced: " + client.secrets().load(is).create());
+                              break;
+                        }
+                        break;
+
+                     case "ConfigMap":
+                        switch (strategy) {
+                           case CREATE:
+                              System.out.println("ConfigMap created: " + client.configMaps().load(is).create());
+                              break;
+                           case DELETE:
+                              System.out.println("ConfigMap deleted: "
+                                                 + client.configMaps().inNamespace(nameSpaceName).withName(name).delete());
+                              break;
+                           case REPLACE:
+                              ConfigMap configMap = client.configMaps().inNamespace(nameSpaceName).withName(name).get();
+                              if (configMap != null) {
+                                 client.configMaps().inNamespace(nameSpaceName).withName(name).delete();
+                              }
+                              System.out.println("ConfigMap replaced: " + client.configMaps().load(is).create());
+                              break;
+                        }
+                        break;
+
+                     case "Deployment":
+                        switch (strategy) {
+                           case CREATE:
+                              System.out.println("Deployment created: " + client.extensions().deployments().load(is).create());
+                              break;
+                           case DELETE:
+                              System.out.println("Deployment deleted: " + client.extensions()
+                                       .deployments()
+                                       .inNamespace(nameSpaceName)
+                                       .withName(name)
+                                       .delete());
+                              break;
+                           case REPLACE:
+                              Deployment deployment = client.extensions()
+                                       .deployments()
+                                       .inNamespace(nameSpaceName)
+                                       .withName(name)
+                                       .get();
+                              if (deployment != null) {
+                                 client.extensions().deployments().inNamespace(nameSpaceName).withName(name).delete();
+                              }
+                              System.out.println("Deployment replaced: " + client.extensions().deployments().load(is).create());
+                              break;
+                        }
+                        break;
+
+                     default:
+                        throw new TaskExecutionException(this,
+                                                         new GradleException("Component of kind '" + kind
+                                                                             + "' not (yet) supported by the plugin"));
+                  }
+                  System.out.println(" ");
+               }
+            }
          }
       } catch (IOException e) {
          throw new TaskExecutionException(this, e);

@@ -48,7 +48,7 @@ public class K8SClientPlugin implements Plugin<Project> {
 
       // Task creation
       DeployTask deployTask = project.getTasks().create(TASK_NAME, DeployTask.class);
-      deployTask.setDescription("deploy");
+      deployTask.setDescription("Deploy assets stored in yaml files to kubernetes via k8s API");
       deployTask.setGroup(DEFAULT_TASK_GROUP);
 
       deployTask.setAuth(extension.getAuth());
