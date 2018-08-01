@@ -24,6 +24,9 @@ deployer {
    ssl { trustAll = true }
    
    deploy {
+      substitutions {
+     
+      }
       action {
          yaml = file(ymlPath + "ca_interne_service.yml")
          strategy = "REPLACE"
