@@ -1,6 +1,6 @@
 plugins { id 'java-gradle-plugin' }
 
-repositories { maven { url "https://sldops0196.saq.qc.ca:10403/repository/saq-global/" }}
+repositories { jcenter() }
 dependencies { 
      compile "io.fabric8:kubernetes-client:4.0.3"
      compile 'org.slf4j:slf4j-api:1.7.25'
