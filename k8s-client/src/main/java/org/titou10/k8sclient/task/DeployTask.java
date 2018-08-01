@@ -37,7 +37,7 @@ import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.extensions.Deployment;
+import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
@@ -211,25 +211,18 @@ public class DeployTask extends DefaultTask {
                      case "Deployment":
                         switch (strategy) {
                            case CREATE:
-                              System.out.println("Deployment created: " + client.extensions().deployments().load(is).create());
+                              System.out.println("Deployment created: " + client.apps().deployments().load(is).create());
                               break;
                            case DELETE:
-                              System.out.println("Deployment deleted: " + client.extensions()
-                                       .deployments()
-                                       .inNamespace(nameSpaceName)
-                                       .withName(name)
-                                       .delete());
+                              System.out.println("Deployment deleted: "
+                                                 + client.apps().deployments().inNamespace(nameSpaceName).withName(name).delete());
                               break;
                            case REPLACE:
-                              Deployment deployment = client.extensions()
-                                       .deployments()
-                                       .inNamespace(nameSpaceName)
-                                       .withName(name)
-                                       .get();
+                              Deployment deployment = client.apps().deployments().inNamespace(nameSpaceName).withName(name).get();
                               if (deployment != null) {
-                                 client.extensions().deployments().inNamespace(nameSpaceName).withName(name).delete();
+                                 client.apps().deployments().inNamespace(nameSpaceName).withName(name).delete();
                               }
-                              System.out.println("Deployment replaced: " + client.extensions().deployments().load(is).create());
+                              System.out.println("Deployment replaced: " + client.apps().deployments().load(is).create());
                               break;
                         }
                         break;

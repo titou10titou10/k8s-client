@@ -1,3 +1,5 @@
-/.gradle/
-/bin/
+**/.gradle/
+/.recommenders/
 /build/
+/bin/
+*.class
