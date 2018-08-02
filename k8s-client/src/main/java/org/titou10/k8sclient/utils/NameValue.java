@@ -14,7 +14,7 @@ public final class NameValue<N, V> {
       return new NameValue<N, V>(name, value);
    }
 
-   private NameValue(@Nullable N name, @Nullable V value) {
+   public NameValue(@Nullable N name, @Nullable V value) {
       this.name = name;
       this.value = value;
    }

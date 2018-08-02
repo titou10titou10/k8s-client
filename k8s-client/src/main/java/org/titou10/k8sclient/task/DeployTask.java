@@ -26,7 +26,9 @@ import org.titou10.k8sclient.extension.AuthExtension;
 import org.titou10.k8sclient.extension.DeployExtension;
 import org.titou10.k8sclient.extension.SSLExtension;
 import org.titou10.k8sclient.extension.Strategy;
+import org.titou10.k8sclient.utils.NameValue;
 import org.titou10.k8sclient.utils.TrustEverythingSSLTrustManager;
+import org.titou10.k8sclient.utils.Utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -67,10 +69,11 @@ public class DeployTask extends DefaultTask {
 
       System.out.println(" ");
       System.out.println("= Debug==============================");
-      System.out.println("k8sServerURL: " + k8sServerURL);
-      System.out.println("ssl         : " + ssl);
-      System.out.println("auth        : " + auth);
-      System.out.println("deploy      : " + deploy);
+      System.out.println("k8sServerURL : " + k8sServerURL.get());
+      System.out.println("ssl          : " + ssl.get());
+      System.out.println("auth         : " + auth.get());
+      System.out.println("deploy       : " + deploy.get());
+      System.out.println("substitutions: " + deploy.get().getSubstitutions().getNames());
       System.out.println("=====================================");
       System.out.println(" ");
 
@@ -85,6 +88,8 @@ public class DeployTask extends DefaultTask {
 
       Config config = new ConfigBuilder().withMasterUrl(k8sServerURL.get()).build();
       try (KubernetesClient client = new DefaultKubernetesClient(config);) {
+
+         List<NameValue<String, String>> variables = deploy.get().toListVariables();
 
          // Execute all actions
          for (ActionExtension action : deploy.get().getActions()) {
@@ -106,11 +111,11 @@ public class DeployTask extends DefaultTask {
             List<String> yamlFileAsStrings = Files.readAllLines(yamlFile.toPath());
             for (String line : yamlFileAsStrings) {
                if (!line.startsWith(YAML_SEPARATOR)) {
-                  currentFile.append(line).append(YAML_EOL);
+                  currentFile.append(Utils.replaceVariables(variables, line)).append(YAML_EOL);
                   continue;
                }
                splittedFiles.add(currentFile);
-               currentFile = new StringBuffer(256);
+               currentFile = new StringBuffer(1024);
             }
             splittedFiles.add(currentFile);
             System.out.println("'" + splittedFiles.size() + "' components found in input file");

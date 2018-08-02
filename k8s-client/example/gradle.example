@@ -24,9 +24,12 @@ deployer {
    ssl { trustAll = true }
    
    deploy {
+      
       substitutions {
-     
+         APP_PREFIX { value = 'xyz' }
+         DOCKER_IMAGE_VERSION { value = 145 }
       }
+      
       action {
          yaml = file(ymlPath + "ca_interne_service.yml")
          strategy = "REPLACE"
