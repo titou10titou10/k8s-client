@@ -15,7 +15,7 @@ public class K8SClientPlugin implements Plugin<Project> {
    // https://github.com/fabric8io/kubernetes-client/blob/master/kubernetes-examples/src/main/java/io/fabric8/openshift/examples/TemplateExample.java
 
    private static final String K8SCLIENT_JAVA_CONFIGURATION_NAME = "clientk8s";
-   private static final String K8SCLIENT_JAVA_DEFAULT_VERSION    = "0.9.0";
+   private static final String K8SCLIENT_JAVA_DEFAULT_VERSION    = "0.10.0";
    private static final String DEFAULT_TASK_GROUP                = "titou10";
    private static final String EXTENSION_NAME                    = "deployer";
    private static final String TASK_NAME                         = "deploy";
