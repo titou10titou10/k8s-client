@@ -39,7 +39,7 @@ public class K8SClientPlugin implements Plugin<Project> {
 
       config.defaultDependencies(new Action<DependencySet>() {
          public void execute(DependencySet dependencies) {
-            dependencies.add(project.getDependencies().create("io.fabric8:kubernetes-client:3.1.8"));
+            dependencies.add(project.getDependencies().create("io.fabric8:kubernetes-client:4.0.3"));
          }
       });
 
