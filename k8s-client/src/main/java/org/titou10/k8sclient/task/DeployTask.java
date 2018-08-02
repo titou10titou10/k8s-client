@@ -59,6 +59,8 @@ public class DeployTask extends DefaultTask {
    private static final String       YAML_EOL       = "\n";
    private static final String       YAML_ENCODING  = "UTF-8";
 
+   private static final String       S1             = "Processing component '%s' of kind '%s' in namespace '%s' ('%s')";
+
    private Property<String>          k8sServerURL;
    private Property<SSLExtension>    ssl;
    private Property<AuthExtension>   auth;
@@ -131,8 +133,8 @@ public class DeployTask extends DefaultTask {
                   ObjectMeta om = metaData.getMetadata();
                   String nameSpaceName = om.getNamespace();
                   String name = om.getName();
-                  System.out.println("Processing component '" + name + "' of kind '" + kind + "' in namespace '" + nameSpaceName
-                                     + "' (" + strategy + ")");
+
+                  System.out.println(String.format(S1, name, kind, nameSpaceName, strategy));
 
                   is.reset(); // Reposition InputStream at the beginning
 
